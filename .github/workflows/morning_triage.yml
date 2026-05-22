@@ -1,0 +1,53 @@
+name: Morning Gmail Triage
+
+# Runs Mon–Fri at 08:00 UTC.
+# Adjust the cron below to match your local timezone offset, e.g.:
+#   UTC+3:30 (Tehran)  → '30 4 * * 1-5'
+#   UTC-5   (EST)      → '0 13 * * 1-5'
+#   UTC+1   (CET)      → '0 7 * * 1-5'
+on:
+  schedule:
+    - cron: '0 8 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Decode base64-encoded credentials stored in GitHub secrets.
+      # Generate these once locally:
+      #   base64 -w0 credentials.json   → GMAIL_CREDENTIALS_JSON_B64
+      #   base64 -w0 token.json         → GMAIL_TOKEN_JSON_B64  (after running --auth)
+      - name: Write Gmail credentials
+        run: |
+          echo "$GMAIL_CREDENTIALS_JSON_B64" | base64 --decode > credentials.json
+          echo "$GMAIL_TOKEN_JSON_B64"       | base64 --decode > token.json
+        env:
+          GMAIL_CREDENTIALS_JSON_B64: ${{ secrets.GMAIL_CREDENTIALS_JSON_B64 }}
+          GMAIL_TOKEN_JSON_B64: ${{ secrets.GMAIL_TOKEN_JSON_B64 }}
+
+      - name: Run triage
+        env:
+          USER_EMAIL: ${{ secrets.USER_EMAIL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+        run: python triage.py
+
+      - name: Remove credentials
+        if: always()
+        run: rm -f credentials.json token.json
