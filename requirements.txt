@@ -1,0 +1,7 @@
+anthropic>=0.40.0
+google-auth>=2.36.0
+google-auth-oauthlib>=1.2.1
+google-api-python-client>=2.154.0
+slack-sdk>=3.33.0
+APScheduler>=3.10.4
+python-dotenv>=1.0.1
